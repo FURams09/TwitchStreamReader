@@ -2,3 +2,5 @@
 .livestreamerrc
 test.mpg
 .vscode/settings.json
+config.ini
+data/*
