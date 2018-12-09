@@ -1,29 +1,34 @@
 from time import gmtime, strftime
+import configparser
 import cv2
 import os
 import zipfile
 import random
 import shutil
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+
+clipsDir = config['DIRECTORY']['clipsstorage']
 # Get list of zip files from clips directory
-clipzips = os.listdir('data/clips')
-now = strftime("%y%m %d_%H%M%S", gmtime())
+clipzips = os.listdir(clipsDir)
+now = strftime("%y%m%d_%H%M%S", gmtime())
 
 bail = False
 # Specify a file in data/clips to pull from or else this will just grab a random file
-
 specificfile = 'fortnite_181207_164325.zip'
 
 if specificfile == '':
     zipindex = random.randint(0, len(clipzips) - 1)
-    zip = os.listdir('data/clips')[zipindex]
+    zip = os.listdir(clipsDir)[zipindex]
     zipfilename = zip
 else:
     zipfilename = specificfile
-zipdir = f'data/clips/{zipfilename}'
+zipdir = os.path.join(clipsDir, zipfilename)
 
 #
 startIndex = 875
-temppath = f'data/temp/{zipfilename}_{now}'
+temppath = os.path.join(config['DIRECTORY']['temp'], f'{zipfilename}_{now}')
 if not os.path.exists(temppath):
     os.makedirs(temppath)
 fileno = 0
@@ -35,7 +40,7 @@ with zipfile.ZipFile(zipdir) as zf:
             continue
         zf.extract(zippedfile, temppath)
         tempfilename = zippedfile.filename
-        tempfile = f'{temppath}/{tempfilename}'
+        tempfile = os.path.join(temppath, tempfilename)
         print(tempfile)
         vidcap = cv2.VideoCapture(tempfile)
         success, image = vidcap.read()
