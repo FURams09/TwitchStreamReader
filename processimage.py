@@ -3,6 +3,12 @@ import numpy as np
 import os
 import json
 import random
+import configparser
+import boto3
+import shutil
+
+config = configparser.ConfigParser()
+config.read('config.ini')
 
 # Read image
 positivedir = 'data/frames/positive'
@@ -37,21 +43,38 @@ if not os.path.exists('data/assets'):
 assetBoundaries = {}
 
 newFileFound = False
-
-with open('data/assets/positives.json', 'r') as outfile:
-    positives = json.load(outfile)
-    while not newFileFound:
-        fileindex = random.randint(0, len(os.listdir(positivedir)) - 1)
-        filename = os.listdir(positivedir)[fileindex]
-        if not filename in positivedir:
-            newFileFound = True
-
+s3client = boto3.client('s3',
+                        aws_access_key_id=config['S3_BUCKET']['accesskey'],
+                        aws_secret_access_key=config['S3_BUCKET']['accesssecret'],)
+positivesList = s3client.get_object(Bucket=config['S3_BUCKET']['bucket'], Key='positives.json')
+positiveImages = s3client.list_objects(Bucket=config['S3_BUCKET']['bucket'], Prefix='frames/positive')
+positives = json.load(positivesList['Body'])
+print (positiveImages['Contents'][0])
+while not newFileFound:
+    fileIndex = random.randint(0, len(positiveImages['Contents']) - 1)
+    filename = os.path.basename(positiveImages['Contents'][fileIndex]['Key'])
+    if not filename in positives:
+        fileKey = positiveImages['Contents'][fileIndex]['Key']
+        newFileFound = True
+temppath = os.path.join(config['DIRECTORY']['temp'],
+                        'crop')
+if not os.path.exists(temppath):
+    os.makedirs(temppath)
 i = 0
-im = cv2.imread(f'{positivedir}/{filename}')
+tempfilename = os.path.join(temppath, filename)
+s3client.download_file(config['S3_BUCKET']['bucket'], fileKey, tempfilename)
+
+
+frameWidth = 600
+im = cv2.imread(tempfilename)
 width, height = im.shape[:2]
+# imgScale = frameWidth/width
+# newX,newY = im.shape[1]*imgScale, im.shape[0]*imgScale
+# resized = cv2.resize(im,(int(newX),int(newY)))
 
 removeImg = False
 bail = False
+
 for asset in boundaries:
     mulitpleBounds = []
     # # Select ROI
@@ -84,11 +107,13 @@ for asset in boundaries:
 
 
 if removeImg == True:
+    s3client.delete_object(Bucket=config['S3_BUCKET']['bucket'], Key=fileKey)
     print(f'deleted file {filename}')
-    os.remove(f'{positivedir}/{filename}')
 elif not bail:
-    with open('data/assets/positives.json', 'r') as outfile:
-        positives = json.load(outfile)
-        positives[os.path.splitext(filename)[0]] = assetBoundaries
-    with open('data/assets/positives.json', 'w') as outfile:
-        json.dump(positives, outfile)
+    assetBoundaries['CroppedWidth'] = frameWidth
+    positives[os.path.splitext(filename)[0]] = assetBoundaries
+    print(positives)
+
+shutil.rmtree(temppath)
+    
+    

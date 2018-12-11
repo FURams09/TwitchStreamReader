@@ -16,7 +16,7 @@ s3client = boto3.client('s3',
                         aws_access_key_id=config['S3_BUCKET']['accesskey'],
                         aws_secret_access_key=config['S3_BUCKET']['accesssecret'],)
 
-specificfile = 'fortnite_181210_142240.zip'
+specificfile = 'starcraft 2_181207_062429.zip'
 
 # check if file exits locally, if not grab it from s3
 clips = s3client.list_objects(
@@ -48,6 +48,7 @@ frameTypes = {
 
 fileno = 0
 startIndex = 0  # 875
+frameWidth = 1000
 bail = False
 print('loading clips')
 with io.BytesIO(clip['Body'].read()) as tf:
@@ -82,6 +83,10 @@ with io.BytesIO(clip['Body'].read()) as tf:
             while success and not bail:
                 if count % grabevery == 0:
                     textimage = image.copy()
+                    height, width, depth = image.shape
+                    imgScale = frameWidth/width
+                    newX,newY = image.shape[1]*imgScale, image.shape[0]*imgScale
+                    textimage = cv2.resize(textimage,(int(newX),int(newY)))
                     textTop = 20
                     cv2.putText(textimage, f'{fileno} of { noOfClips} clips',
                                 (0, 20), font, .6, (255, 0, 20), 2, cv2.LINE_AA)
@@ -96,10 +101,10 @@ with io.BytesIO(clip['Body'].read()) as tf:
                             keys = chr(frameTypes[categories][0])
                         message = f'Press {keys} if {frameTypes[categories][1]}'
                         cv2.putText(textimage, message,
-                                    (int(width/2), textTop), font, .6, (255, 255, 255), 2, cv2.LINE_AA)
+                                    (int(frameWidth/2), textTop), font, .6, (255, 255, 255), 2, cv2.LINE_AA)
                     textTop += 20
-                    cv2.putText(textimage, 'Enter Q to quit',
-                                (int(width/2), textTop), font, .6, (255, 255, 255), 2, cv2.LINE_AA)
+                    cv2.putText(textimage, 'Enter q to quit',
+                                (int(frameWidth/2), textTop), font, .6, (255, 255, 255), 2, cv2.LINE_AA)
                     cv2.imshow("Image", textimage)
 
                     picResponse = cv2.waitKey()
