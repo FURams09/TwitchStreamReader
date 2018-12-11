@@ -6,6 +6,7 @@ import random
 import configparser
 import boto3
 import shutil
+import io
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -46,10 +47,11 @@ newFileFound = False
 s3client = boto3.client('s3',
                         aws_access_key_id=config['S3_BUCKET']['accesskey'],
                         aws_secret_access_key=config['S3_BUCKET']['accesssecret'],)
-positivesList = s3client.get_object(Bucket=config['S3_BUCKET']['bucket'], Key='positives.json')
-positiveImages = s3client.list_objects(Bucket=config['S3_BUCKET']['bucket'], Prefix='frames/positive')
+positivesList = s3client.get_object(
+    Bucket=config['S3_BUCKET']['bucket'], Key='positives.json')
+positiveImages = s3client.list_objects(
+    Bucket=config['S3_BUCKET']['bucket'], Prefix='frames/positive')
 positives = json.load(positivesList['Body'])
-print (positiveImages['Contents'][0])
 while not newFileFound:
     fileIndex = random.randint(0, len(positiveImages['Contents']) - 1)
     filename = os.path.basename(positiveImages['Contents'][fileIndex]['Key'])
@@ -112,8 +114,9 @@ if removeImg == True:
 elif not bail:
     assetBoundaries['CroppedWidth'] = frameWidth
     positives[os.path.splitext(filename)[0]] = assetBoundaries
-    print(positives)
+    p = json.dumps(positives)
+    s3client.put_object(
+        Bucket=config['S3_BUCKET']['bucket'], Key='positives.json', Body=p)
+
 
 shutil.rmtree(temppath)
-    
-    

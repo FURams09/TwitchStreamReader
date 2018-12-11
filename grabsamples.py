@@ -43,6 +43,8 @@ data = json.loads(response.read())['data']
 
 
 # initialize directory to store images
+
+# TODO: Zip up every X clips to keep processing size down
 for k in range(clipstograb):
     print(f'Starting Pass {k}')
     for j in range(len(data)):
